@@ -1,4 +1,4 @@
-// File Location: /composer.json
+
 {
     "name": "devjax/pesapal-sdk",
     "description": "A powerful SDK for integrating with Pesapal API 3.0.",

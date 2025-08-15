@@ -10,19 +10,20 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../Pesapal/Pesapal.php';
 require_once __DIR__ . '/../Pesapal/PesapalException.php';
 
-// Load credentials from a .env file if it exists, otherwise use server variables
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->safeLoad(); // Use safeLoad() to avoid errors in production
+$dotenv->safeLoad();
 
 $consumerKey    = $_ENV['PESAPAL_CONSUMER_KEY']    ?? null;
 $consumerSecret = $_ENV['PESAPAL_CONSUMER_SECRET'] ?? null;
 
-// Immediately stop if credentials are not set.
 if (!$consumerKey || !$consumerSecret) {
-    die("Error: PESAPAL_CONSUMER_KEY and PESAPAL_CONSUMER_SECRET must be set in your .env file or server environment variables.");
+    die("Error: PESAPAL_CONSUMER_KEY and PESAPAL_CONSUMER_SECRET must be set.");
 }
 
-$isLive = false;
+// --- Configuration ---
+// Set to 'true' for LIVE mode, 'false' for SANDBOX mode.
+$isLive = true;
+
 $pesapal = new DevJax\Pesapal\Pesapal($consumerKey, $consumerSecret, $isLive);
 
 $status = null;

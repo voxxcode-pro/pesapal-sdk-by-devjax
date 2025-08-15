@@ -10,20 +10,19 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../Pesapal/Pesapal.php';
 require_once __DIR__ . '/../Pesapal/PesapalException.php';
 
-// Load credentials from a .env file if it exists, otherwise use server variables
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->safeLoad(); // Use safeLoad() to avoid errors in production
+$dotenv->safeLoad();
 
 $consumerKey    = $_ENV['PESAPAL_CONSUMER_KEY']    ?? null;
 $consumerSecret = $_ENV['PESAPAL_CONSUMER_SECRET'] ?? null;
 
-// Immediately stop if credentials are not set.
 if (!$consumerKey || !$consumerSecret) {
-    die("Error: PESAPAL_CONSUMER_KEY and PESAPAL_CONSUMER_SECRET must be set in your .env file or server environment variables.");
+    die("Error: PESAPAL_CONSUMER_KEY and PESAPAL_CONSUMER_SECRET must be set.");
 }
 
 // --- Configuration ---
-$isLive = false; // Set to true for production
+// Set to 'true' for LIVE mode, 'false' for SANDBOX mode.
+$isLive = true; 
 $callbackUrl = 'https://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/callback.php';
 
 $pesapal = new DevJax\Pesapal\Pesapal($consumerKey, $consumerSecret, $isLive);
@@ -35,17 +34,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $notificationId = $_ENV['PESAPAL_IPN_ID']; 
         if(empty($notificationId)){
-            throw new \Exception("PESAPAL_IPN_ID is not set in your environment variables. Please register your IPN URL first.");
+            throw new \Exception("PESAPAL_IPN_ID is not set. Please register your IPN URL first.");
         }
 
-        $merchantReference = 'TEST' . time();
+        $merchantReference = 'TZS_TEST_' . time();
         $amount = htmlspecialchars($_POST['amount']);
         $phoneNumber = htmlspecialchars($_POST['phone_number']);
         $email = htmlspecialchars($_POST['email']);
 
         $orderDetails = [
             'id' => $merchantReference,
-            'currency' => 'KES',
+            'currency' => 'TZS', // Set to Tanzanian Shilling
             'amount' => (float)$amount,
             'description' => 'Test Mobile Money Payment',
             'callback_url' => $callbackUrl,
@@ -60,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $response = $pesapal->submitOrder($orderDetails);
 
         if (isset($response['redirect_url'])) {
-            $message = "STK Push sent successfully! Please enter your PIN on your phone to complete the payment.";
+            $message = "STK Push sent successfully! Please enter your PIN on your phone to complete the payment. Order Tracking ID: " . $response['order_tracking_id'];
         } else {
             throw new \Exception($response['error']['message'] ?? 'Failed to initiate payment.');
         }
@@ -84,11 +83,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($error): ?><div class="message error"><?= $error ?></div><?php endif; ?>
         <form action="" method="POST">
             <div class="form-group">
-                <label for="amount">Amount (KES)</label>
-                <input type="number" id="amount" name="amount" value="1" required>
+                <label for="amount">Amount (TZS)</label>
+                <input type="number" id="amount" name="amount" value="1000" required>
             </div>
             <div class="form-group">
-                <label for="phone_number">Phone Number (e.g., 2547...)</label>
+                <label for="phone_number">Phone Number (e.g., 255...)</label>
                 <input type="tel" id="phone_number" name="phone_number" required>
             </div>
              <div class="form-group">

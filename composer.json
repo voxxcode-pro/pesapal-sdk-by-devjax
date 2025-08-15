@@ -1,0 +1,17 @@
+// File Location: /composer.json
+{
+    "name": "devjax/pesapal-sdk",
+    "description": "A powerful SDK for integrating with Pesapal API 3.0.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "DevJax",
+            "email": "dev.jax@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "vlucas/phpdotenv": "^5.4"
+    }
+}

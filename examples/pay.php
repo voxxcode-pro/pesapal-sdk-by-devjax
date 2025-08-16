@@ -33,7 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $amount = htmlspecialchars($_POST['amount']);
         $email = htmlspecialchars($_POST['email']);
         $phoneNumber = htmlspecialchars($_POST['phone_number']);
-        $paymentMethod = htmlspecialchars($_POST['payment_method']);
+        // The line below was causing the error and has been removed.
+        // $paymentMethod = htmlspecialchars($_POST['payment_method']); 
 
         $orderDetails = [
             'id' => $merchantReference,
@@ -46,9 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'phone_number' => $phoneNumber,
             ]
         ];
-        
-        // As you discovered, we no longer need to set 'payment_method'.
-        // Pesapal's checkout page handles this selection.
 
         $response = $pesapal->submitOrder($orderDetails);
 

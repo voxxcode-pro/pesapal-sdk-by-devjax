@@ -1,10 +1,13 @@
 <?php
 /**
- * Unified Payment Page
+ * Unified Payment Page with Resubmission Protection
  *
  * @file     examples/pay.php
  * @author   DevJax
  */
+
+// Start a session to store the one-time form token.
+session_start();
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../Pesapal/Pesapal.php';
@@ -20,52 +23,60 @@ if (!$consumerKey || !$consumerSecret) {
     die("Error: PESAPAL_CONSUMER_KEY and PESAPAL_CONSUMER_SECRET must be set.");
 }
 
-// --- Configuration ---
-$isLive = true; // Set to 'false' for SANDBOX mode.
+$isLive = true;
 $callbackUrl = 'https://' . $_SERVER['HTTP_HOST'] . preg_replace('/\/[^\/]*$/', '/', $_SERVER['REQUEST_URI']) . 'callback.php';
-
 $pesapal = new DevJax\Pesapal\Pesapal($consumerKey, $consumerSecret, $isLive);
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        $merchantReference = 'PAYMENT_' . time();
-        $amount = htmlspecialchars($_POST['amount']);
-        $email = htmlspecialchars($_POST['email']);
-        $phoneNumber = htmlspecialchars($_POST['phone_number']);
-        // The line below was causing the error and has been removed.
-        // $paymentMethod = htmlspecialchars($_POST['payment_method']); 
+    // Check if the submitted token is valid.
+    if (!isset($_POST['form_token']) || !isset($_SESSION['form_token']) || $_POST['form_token'] !== $_SESSION['form_token']) {
+        $error = "Invalid form submission. Please try again.";
+    } else {
+        // The token is valid. Invalidate it immediately to prevent reuse.
+        unset($_SESSION['form_token']);
 
-        $orderDetails = [
-            'id' => $merchantReference,
-            'currency' => 'TZS',
-            'amount' => (float)$amount,
-            'description' => 'Website Payment',
-            'callback_url' => $callbackUrl,
-            'billing_address' => [
-                'email_address' => $email,
-                'phone_number' => $phoneNumber,
-            ]
-        ];
+        try {
+            $merchantReference = 'PAYMENT_' . time();
+            $amount = htmlspecialchars($_POST['amount']);
+            $email = htmlspecialchars($_POST['email']);
+            $phoneNumber = htmlspecialchars($_POST['phone_number']);
 
-        $response = $pesapal->submitOrder($orderDetails);
+            $orderDetails = [
+                'id' => $merchantReference,
+                'currency' => 'TZS',
+                'amount' => (float)$amount,
+                'description' => 'Website Payment',
+                'callback_url' => $callbackUrl,
+                'billing_address' => [
+                    'email_address' => $email,
+                    'phone_number' => $phoneNumber,
+                ]
+            ];
 
-        if (isset($response['redirect_url'])) {
-            header('Location: ' . $response['redirect_url']);
-            exit;
-        } else {
-            throw new \Exception($response['error']['message'] ?? 'Failed to create payment link.');
+            $response = $pesapal->submitOrder($orderDetails);
+
+            if (isset($response['redirect_url'])) {
+                header('Location: ' . $response['redirect_url']);
+                exit;
+            } else {
+                throw new \Exception($response['error']['message'] ?? 'Failed to create payment link.');
+            }
+
+        } catch (\DevJax\Pesapal\PesapalException | \Exception $e) {
+            $error = "Error: " . $e->getMessage();
         }
-
-    } catch (\DevJax\Pesapal\PesapalException | \Exception $e) {
-        $error = "Error: " . $e->getMessage();
     }
 }
+
+// Generate a new, unique token for the form.
+$formToken = bin2hex(random_bytes(32));
+$_SESSION['form_token'] = $formToken;
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-g">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Payment</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -97,7 +108,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             <?php endif; ?>
 
-            <form method="POST" class="space-y-4">
+            <form method="POST" class="space-y-4" onsubmit="this.querySelector('button[type=submit]').disabled = true; this.querySelector('button[type=submit]').innerHTML = '<i class=\'ri-loader-4-line animate-spin\'></i> Processing...'">
+                <!-- Hidden token field to prevent resubmission -->
+                <input type="hidden" name="form_token" value="<?= htmlspecialchars($formToken) ?>">
+
                 <div>
                     <label for="amount" class="block text-sm font-medium text-gray-700">Amount (TZS)</label>
                     <div class="mt-1 relative rounded-md shadow-sm">
@@ -128,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
                 
-                <button type="submit" class="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-300">
+                <button type="submit" class="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-300 disabled:bg-blue-400 disabled:cursor-wait">
                     <span>Continue to Checkout</span>
                     <i class="ri-arrow-right-line"></i>
                 </button>
